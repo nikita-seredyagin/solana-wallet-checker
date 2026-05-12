@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Виртуальное окружение
+venv/
+.venv/
+
+# Переменные окружения
+.env
+
+# База данных
+*.db
+
+# Docker
+postgres_data/

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana Wallet Checker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d12;
+      --surface:   #13131a;
+      --border:    #1e1e2e;
+      --purple:    #9945ff;
+      --green:     #14f195;
+      --text:      #e2e2f0;
+      --muted:     #6b6b88;
+      --error:     #ff5c5c;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--purple), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.875rem;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, textarea:focus { border-color: var(--purple); }
+    textarea { resize: vertical; min-height: 120px; }
+
+    .hint {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    button.primary {
+      margin-top: 16px;
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--purple), #7b35d8);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button.primary:hover { opacity: 0.85; }
+    button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .result { margin-top: 24px; }
+
+    .wallet-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .wallet-card .wc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .wallet-card .address {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge.active   { background: rgba(20,241,149,.15); color: var(--green); }
+    .badge.inactive { background: rgba(107,107,136,.15); color: var(--muted); }
+
+    .wallet-card .wc-body { padding: 16px; }
+
+    .sol-balance {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .sol-balance span { font-size: 1rem; color: var(--muted); margin-left: 4px; }
+
+    .meta {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 16px 0 8px;
+    }
+
+    .token-list, .nft-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .token-item {
+      display: flex;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8125rem;
+    }
+
+    .token-item .mint {
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .token-item .amount { color: var(--green); font-weight: 600; }
+
+    .empty-state {
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 8px 0;
+    }
+
+    .error-msg {
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: rgba(255,92,92,.1);
+      border: 1px solid rgba(255,92,92,.25);
+      border-radius: 8px;
+      color: var(--error);
+      font-size: 0.8125rem;
+    }
+
+    /* Bulk */
+    .task-info {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .task-info .task-id {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--green));
+      border-radius: 2px;
+      transition: width 0.4s;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .status-badge.pending  { background: rgba(107,107,136,.2); color: var(--muted); }
+    .status-badge.running  { background: rgba(153,69,255,.2);  color: var(--purple); }
+    .status-badge.done     { background: rgba(20,241,149,.15); color: var(--green); }
+    .status-badge.failed   { background: rgba(255,92,92,.15);  color: var(--error); }
+
+    .results-table {
+      margin-top: 16px;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .results-table th {
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0 8px 8px;
+    }
+
+    .results-table td {
+      padding: 8px;
+      border-top: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .results-table td.addr {
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .results-table td.sol { color: var(--green); font-weight: 600; }
+    .results-table td.err { color: var(--error); font-size: 0.7rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Solana Wallet Checker</h1>
+  <p>Check balances, tokens and NFTs on Solana Mainnet</p>
+</header>
+
+<div class="card">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('single')">Single</button>
+    <button class="tab" onclick="switchTab('bulk')">Bulk</button>
+  </div>
+
+  <!-- Single -->
+  <div class="panel active" id="panel-single">
+    <label>Wallet Address</label>
+    <input id="single-input" type="text" placeholder="Enter Solana wallet address…" />
+    <button class="primary" id="single-btn" onclick="checkSingle()">Check Wallet</button>
+    <div class="result" id="single-result"></div>
+  </div>
+
+  <!-- Bulk -->
+  <div class="panel" id="panel-bulk">
+    <label>Wallet Addresses</label>
+    <textarea id="bulk-input" placeholder="One address per line…"></textarea>
+    <p class="hint">Up to 1000 addresses</p>
+    <button class="primary" id="bulk-btn" onclick="startBulk()">Start Check</button>
+    <div class="result" id="bulk-result"></div>
+  </div>
+</div>
+
+<script>
+  const API = '';
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((el, i) =>
+      el.classList.toggle('active', (i === 0) === (tab === 'single'))
+    );
+    document.getElementById('panel-single').classList.toggle('active', tab === 'single');
+    document.getElementById('panel-bulk').classList.toggle('active', tab === 'bulk');
+  }
+
+  // ── Single ──────────────────────────────────────────────────────────────
+
+  async function checkSingle() {
+    const address = document.getElementById('single-input').value.trim();
+    const result  = document.getElementById('single-result');
+    const btn     = document.getElementById('single-btn');
+
+    if (!address) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    result.innerHTML = '';
+
+    try {
+      const res  = await fetch(`${API}/api/v1/wallet/${address}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        result.innerHTML = `<div class="error-msg">${data.detail || 'Unknown error'}</div>`;
+        return;
+      }
+
+      result.innerHTML = renderWalletCard(data);
+    } catch (e) {
+      result.innerHTML = `<div class="error-msg">Network error</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Check Wallet';
+    }
+  }
+
+  function renderWalletCard(w) {
+    const lastActivity = w.last_activity_at
+      ? new Date(w.last_activity_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Never';
+
+    const tokens = (w.spl_tokens || []).length
+      ? w.spl_tokens.map(t => `
+          <div class="token-item">
+            <div>
+              <div>${t.symbol || 'Token'}</div>
+              <div class="mint">${t.mint.slice(0, 8)}…${t.mint.slice(-6)}</div>
+            </div>
+            <div class="amount">${Number(t.amount).toLocaleString()}</div>
+          </div>`).join('')
+      : '<p class="empty-state">No tokens</p>';
+
+    const nfts = (w.nfts || []).length
+      ? w.nfts.map(n => `
+          <div class="token-item">
+            <div>
+              <div>${n.name || 'NFT'}</div>
+              <div class="mint">${n.collection || n.mint.slice(0, 16) + '…'}</div>
+            </div>
+          </div>`).join('')
+      : '<p class="empty-state">No NFTs</p>';
+
+    return `
+      <div class="wallet-card">
+        <div class="wc-header">
+          <div class="address">${w.address.slice(0,8)}…${w.address.slice(-8)}</div>
+          <span class="badge ${w.is_active ? 'active' : 'inactive'}">${w.is_active ? 'Active' : 'Inactive'}</span>
+        </div>
+        <div class="wc-body">
+          <div class="sol-balance">${Number(w.sol_balance).toFixed(4)}<span>SOL</span></div>
+          <div class="meta">Last activity: ${lastActivity}</div>
+          <div class="section-title">SPL Tokens</div>
+          <div class="token-list">${tokens}</div>
+          <div class="section-title">NFTs</div>
+          <div class="nft-list">${nfts}</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Bulk ────────────────────────────────────────────────────────────────
+
+  let pollInterval = null;
+
+  async function startBulk() {
+    const raw       = document.getElementById('bulk-input').value.trim();
+    const result    = document.getElementById('bulk-result');
+    const btn       = document.getElementById('bulk-btn');
+    const addresses = raw.split('\n').map(s => s.trim()).filter(Boolean);
+
+    if (!addresses.length) return;
+
+    clearInterval(pollInterval);
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+    result.innerHTML = '';
+
+    try {
+      const res  = await fetch(`${API}/api/v1/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addresses }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        result.innerHTML = `<div class="error-msg">${data.detail || 'Unknown error'}</div>`;
+        return;
+      }
+
+      result.innerHTML = renderTaskInfo(data, []);
+      pollInterval = setInterval(() => pollTask(data.task_id), 2000);
+    } catch (e) {
+      result.innerHTML = `<div class="error-msg">Network error</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Start Check';
+    }
+  }
+
+  async function pollTask(taskId) {
+    try {
+      const res  = await fetch(`${API}/api/v1/task/${taskId}?page_size=500`);
+      const data = await res.json();
+
+      document.getElementById('bulk-result').innerHTML = renderTaskInfo(data, data.results || []);
+
+      if (data.status === 'done' || data.status === 'failed') {
+        clearInterval(pollInterval);
+      }
+    } catch {}
+  }
+
+  function renderTaskInfo(task, results) {
+    const pct      = task.total ? Math.round((task.processed / task.total) * 100) : 0;
+    const spinner  = (task.status === 'running' || task.status === 'pending')
+      ? '<span class="spinner"></span>' : '';
+
+    const rows = results.map(r => `
+      <tr>
+        <td class="addr" title="${r.address}">${r.address.slice(0,8)}…${r.address.slice(-6)}</td>
+        <td class="sol">${r.error ? '—' : Number(r.sol_balance).toFixed(4)}</td>
+        <td>${r.error ? '—' : (r.spl_tokens || []).length}</td>
+        <td>${r.error ? '—' : (r.nfts || []).length}</td>
+        <td>${r.error
+          ? `<span class="err">${r.error.slice(0, 40)}</span>`
+          : `<span class="badge ${r.is_active ? 'active' : 'inactive'}">${r.is_active ? 'Active' : 'Inactive'}</span>`
+        }</td>
+      </tr>`).join('');
+
+    return `
+      <div class="task-info">
+        <div class="task-id">Task: ${task.task_id}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>${spinner}<span class="status-badge ${task.status}">${task.status}</span></div>
+          <div style="font-size:.75rem;color:var(--muted)">${task.processed} / ${task.total}</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="status-row">
+          <span>${task.failed ? `${task.failed} failed` : ''}</span>
+          <span>${pct}%</span>
+        </div>
+        ${rows ? `
+        <table class="results-table">
+          <thead><tr>
+            <th>Address</th><th>SOL</th><th>Tokens</th><th>NFTs</th><th>Status</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` : ''}
+      </div>`;
+  }
+
+  document.getElementById('single-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkSingle();
+  });
+</script>
+</body>
+</html>
